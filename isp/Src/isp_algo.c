@@ -680,6 +680,7 @@ ISP_StatusTypeDef ISP_Algo_AWB_Process(void *hIsp, void *pAlgo)
   ISP_AlgoTypeDef *algo = (ISP_AlgoTypeDef *)pAlgo;
   ISP_StatusTypeDef ret_stat, ret = ISP_OK;
   uint32_t estimatedColorTemp = 0;
+  bool configUpdated = false;
 
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
 
@@ -744,13 +745,13 @@ ISP_StatusTypeDef ISP_Algo_AWB_Process(void *hIsp, void *pAlgo)
     /* Optimization: do not ask for Up stats, but evaluate them from the down stats */
     ISP_SVC_Stats_EvaluateUp(hIsp, &stats.down, &stats.up);
 
-    ret = ISP_AWB_GetConfig(&stats.up, &ColorConvConfig, &ISPGainConfig, &estimatedColorTemp);
+    ret = ISP_AWB_GetConfig(&stats.up, &configUpdated, &ColorConvConfig, &ISPGainConfig, &estimatedColorTemp);
 #ifdef ALGO_PERF_DBG_LOGS
       end_algo_calc = DWT->CYCCNT;
 #endif
     if (ret == ISP_OK)
     {
-      if (estimatedColorTemp != currentColorTemp || reconfigureRequest == true)
+      if (estimatedColorTemp != currentColorTemp || reconfigureRequest == true || configUpdated == true)
       {
         /* Apply Color Conversion */
         ret = ISP_SVC_ISP_SetColorConv(hIsp, &ColorConvConfig);

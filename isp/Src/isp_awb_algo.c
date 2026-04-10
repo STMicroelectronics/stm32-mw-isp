@@ -33,7 +33,6 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t ISP_AWB_GetRB_Ratio(const ISP_StatisticsTypeDef *pStats);
-static uint32_t ISP_AWB_IsStatUnchanged(const ISP_StatisticsTypeDef *pStats);
 static void ISP_AWB_SelectProfiles(uint32_t rb_ratio, int *pExactProfId, uint32_t *pUpProfId, uint32_t *pDownProfId,
                                         double *pInterpolRatio);
 static void ISP_AWB_ApplyExactProfile(int exactProfId, uint32_t rb_ratio, ISP_ColorConvTypeDef *pColorConvConfig,
@@ -49,19 +48,15 @@ static ISP_StatisticsTypeDef ISP_AWB_CurrStats;
 static uint32_t ISP_AWB_CurrTemp;
 static ISP_ColorConvTypeDef ISP_AWB_CurrColorConv;
 static ISP_ISPGainTypeDef ISP_AWB_CurrISPGain;
+static int32_t ISP_AWB_Gain_LowPass_Filtered;
+static uint32_t rb_ratio_previous;
+static int error_previous;
 
 /* Global variables ----------------------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 static uint32_t ISP_AWB_GetRB_Ratio(const ISP_StatisticsTypeDef *pStats)
 {
   return pStats->averageB != 0 ? (uint32_t)(pStats->averageR * 1000 / pStats->averageB) : ISP_AWB_rbRatio[0];
-}
-
-static uint32_t ISP_AWB_IsStatUnchanged(const ISP_StatisticsTypeDef *pStats)
-{
-  return ((abs(pStats->averageR - ISP_AWB_CurrStats.averageR) <= ISP_AWB_STAT_NO_CHANGE) &&
-          (abs(pStats->averageG - ISP_AWB_CurrStats.averageG) <= ISP_AWB_STAT_NO_CHANGE) &&
-          (abs(pStats->averageB - ISP_AWB_CurrStats.averageB) <= ISP_AWB_STAT_NO_CHANGE));
 }
 
 static void ISP_AWB_SelectProfiles(uint32_t rb_ratio, int *pExactProfId, uint32_t *pUpProfId, uint32_t *pDownProfId,
@@ -164,7 +159,6 @@ static void ISP_AWB_ApplyInterpolatedProfile(uint32_t upProfId, uint32_t downPro
         ((int64_t)ISP_AWB_Config.ispGainB[upProfId] - ISP_AWB_Config.ispGainB[downProfId]));
   pISPGainConfig->ispGainB = (uint32_t)i64;
 
-
   *pColorTemp = (uint32_t)(ISP_AWB_Config.referenceColorTemp[downProfId] + interpolRatio *
                 (ISP_AWB_Config.referenceColorTemp[upProfId] - ISP_AWB_Config.referenceColorTemp[downProfId]));
 #ifdef ALGO_AWB_DBG_LOGS
@@ -194,6 +188,8 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
   ISP_AWB_CurrColorConv.enable = 0;
   ISP_AWB_CurrISPGain.enable = 0;
   ISP_AWB_NbProfiles = 0;
+  rb_ratio_previous = 0;
+  error_previous = 0;
 
   /* Check that the R/G/B references are not 0 */
   for (profId = 0; profId < ISP_AWB_COLORTEMP_REF && ISP_AWB_Config.referenceColorTemp[profId] != 0; profId++)
@@ -217,6 +213,23 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
     }
   }
 
+  switch (ISP_AWB_Config.convergenceSpeed)
+  {
+    case ISP_AWB_CONVERGENCESPEED_FAST:
+      ISP_AWB_Gain_LowPass_Filtered = 4;
+      break;
+    case ISP_AWB_CONVERGENCESPEED_MEDIUM:
+      ISP_AWB_Gain_LowPass_Filtered = 8;
+      break;
+    case ISP_AWB_CONVERGENCESPEED_SLOW:
+      ISP_AWB_Gain_LowPass_Filtered = 12;
+      break;
+    case ISP_AWB_CONVERGENCESPEED_VERY_FAST:
+    default:
+      ISP_AWB_Gain_LowPass_Filtered = 1;
+      break;
+  }
+
   return ISP_OK;
 }
 
@@ -225,21 +238,22 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
   *         Evaluate from the input statistics, the Color Temperature and the white-balanced
   *         ColorConv and Gain configuration.
   * @param  pStats: pointer to the current RGB statistics
+  * @param  config_changed: pointer to a boolean that is set to true if the computed config is different from the current applied config
   * @param  pColorConvConfig: pointer to the output Color Conversion configuration
   * @param  pISPGainConfig: pointer to the output ISP Gain configuration
   * @param  pColorTemp: pointer to the output estimated color temperature
   * @retval operation result
   */
-ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, ISP_ColorConvTypeDef *pColorConvConfig, ISP_ISPGainTypeDef *pISPGainConfig, uint32_t *pColorTemp)
-{
-  int exactProfId = -1;
-  double interpolRatio = 0.0;
-  uint32_t rb_ratio, upProfId = 0, downProfId = 0;
+ ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, bool *config_changed, ISP_ColorConvTypeDef *pColorConvConfig, ISP_ISPGainTypeDef *pISPGainConfig, uint32_t *pColorTemp)
+ {
+   int exactProfId = -1;
+   double interpolRatio = 0.0;
+   uint32_t rb_ratio, upProfId = 0, downProfId = 0;
+   int error = 0;
+   uint32_t rb_ratio_target = ISP_AWB_GetRB_Ratio(pStats);
 
-  rb_ratio = ISP_AWB_GetRB_Ratio(pStats);
-
-  /* Anti oscillation : if the statistics did not 'really' change, just return the last parameters */
-  if (ISP_AWB_IsStatUnchanged(pStats) != 0U)
+  /* If the R/B ratio did not change much and the stats did not change much, we consider that the config does not need to be updated */
+  if (abs((int32_t)(rb_ratio_previous - rb_ratio_target)) < 100)
   {
 #ifdef ALGO_AWB_DBG_LOGS
     printf("R/B=%4"PRIu32"  -  No change  -  ColorTemp = %"PRIu32"\r\n", rb_ratio, ISP_AWB_CurrTemp);
@@ -247,8 +261,20 @@ ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, ISP_ColorConv
     *pColorConvConfig = ISP_AWB_CurrColorConv;
     *pISPGainConfig = ISP_AWB_CurrISPGain;
     *pColorTemp = ISP_AWB_CurrTemp;
+    *config_changed = false;
     return ISP_OK;
   }
+
+  error = (int)(rb_ratio_target - rb_ratio_previous);
+  rb_ratio = rb_ratio_previous + error / ISP_AWB_Gain_LowPass_Filtered;
+  error_previous = error;
+
+  if (abs((int32_t)(rb_ratio_target - rb_ratio)) < 100)
+  {
+    rb_ratio = rb_ratio_target;
+  }
+  rb_ratio_previous = rb_ratio;
+
   ISP_AWB_CurrStats = *pStats;
 
   ISP_AWB_SelectProfiles(rb_ratio, &exactProfId, &upProfId, &downProfId, &interpolRatio);
@@ -256,6 +282,7 @@ ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, ISP_ColorConv
   /* Set the ColorConv and ISPGain configs */
   pColorConvConfig->enable = 1;
   pISPGainConfig->enable = 1;
+
   /* Check if an 'exact' profile was found */
   if (exactProfId != -1)
   {
@@ -271,6 +298,8 @@ ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, ISP_ColorConv
   ISP_AWB_CurrColorConv = *pColorConvConfig;
   ISP_AWB_CurrISPGain = *pISPGainConfig;
   ISP_AWB_CurrTemp = *pColorTemp;
+  *config_changed = true;
 
   return ISP_OK;
 }
+

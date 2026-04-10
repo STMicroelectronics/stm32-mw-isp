@@ -300,6 +300,14 @@ typedef struct
 #define ISP_AWB_COLORTEMP_REF               (5U)
 #define ISP_AWB_PROFILE_ID_MAX_LENGTH      (32U)
 
+typedef enum
+{
+  ISP_AWB_CONVERGENCESPEED_VERY_FAST = 0U,
+  ISP_AWB_CONVERGENCESPEED_FAST = 1U,
+  ISP_AWB_CONVERGENCESPEED_MEDIUM = 2U,
+  ISP_AWB_CONVERGENCESPEED_SLOW = 3U,
+} ISP_AWB_ConvergenceSpeedTypeDef;
+
 typedef struct
 {
   uint8_t enable;             /* Enable or disable */
@@ -310,6 +318,7 @@ typedef struct
   uint32_t ispGainB[ISP_AWB_COLORTEMP_REF];   /* Array of gains of the blue component */
   int32_t coeff[ISP_AWB_COLORTEMP_REF][3][3]; /* Array of 3x3 RGB to RGB matrix coefficients. Unit = 100000000 for "x1.0", -150000000 for "x-1.5". Range is "x-4.0" to "x4.0" */
   uint8_t referenceRGB[ISP_AWB_COLORTEMP_REF][3]; /* Array of reference RGB components */
+  ISP_AWB_ConvergenceSpeedTypeDef convergenceSpeed; /* Convergence speed of the AWB algorithm */
 } ISP_AWBAlgoTypeDef;
 
 typedef struct

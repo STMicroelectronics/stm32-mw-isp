@@ -88,6 +88,7 @@ static const ISP_IQParamTypeDef ISP_IQParamCacheInit_VD65G4 = {
             { 53, 56, 23},
             { 42, 55, 34},
         },
+        .convergenceSpeed = ISP_AWB_CONVERGENCESPEED_MEDIUM,
     },
     .contrast = {
         .enable = 0,
