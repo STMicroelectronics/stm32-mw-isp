@@ -1041,7 +1041,10 @@ static void ISP_CmdParser_SendDumpData(uint8_t* pFrame, uint32_t size)
       /* Dirty hack that allows to dump frame with windows environment
        * It slow down new transmission after having receive the acknowledgement.
        */
-      for (uint32_t i = 0 ; i < 30000 ; i++);
+      volatile uint32_t delay = 30000U;
+      while (delay-- > 0U)
+      {
+      }
 
     } while (remaining > 0);
   }
