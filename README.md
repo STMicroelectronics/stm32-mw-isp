@@ -1,6 +1,6 @@
 # STM32 ISP Library
 
-![latest tag](https://img.shields.io/github/v/tag/STMicroelectronics/stm32-mw-isp.svg)
+![latest tag](https://img.shields.io/badge/tag-2.0.1-blue)
 
 The ISP Library middleware (running on the target) hosts 2A algorithms
 (Auto Exposure and Auto White Balance) and mechanisms to control the
@@ -17,17 +17,7 @@ ISP_MW_TUNING_TOOL_SUPPORT must be enabled.
 - isp_param_conf: collection of sensor tuning parameters
 
 ## Enhancements, new features
-- **New 2A algorithms**:
-  - The **Auto-Exposure (AE)** algorithm is now based on lux estimation, providing a faster and more stable approach to achieve the luminance target.
-  - The **Auto White Balance (AWB)** algorithm now uses color ratios to reach color accuracy more quickly and with greater stability. Additionally, this new algorithm offers improved rendering between two profiles through interpolation.
-- **New tuning parameters** are now required to run the new 2A algorithms. These parameters are avalaible for the following list of sensors:
-  - IMX335
-  - VD66GY
-  - VD5943 (MONO)
-  - VD1943
-  - VD65G4
-  - VD56G3 (MONO)
-- **UVC streaming** is now supported for a better STM32 ISP IQTune user experience
+- Minor update for security level
 
 ## Compatibility
 Compatible with STM32 ISP IQTune 2.0.0 (No backward compatibility with previous STM32 ISP IQTune version).
