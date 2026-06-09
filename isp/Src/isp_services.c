@@ -523,13 +523,13 @@ ISP_StatusTypeDef ISP_SVC_ISP_SetDemosaicing(ISP_HandleTypeDef *hIsp, ISP_Demosa
   }
 
   /* Do not enable demosaicing if the camera sensor is a monochrome sensor */
-  if ((pConfig->enable == 0) || (pConfig->type == ISP_DEMOS_TYPE_MONO))
+  if ((pConfig->enable == 0) || (hIsp->sensorInfo.bayer_pattern == ISP_DEMOS_TYPE_MONO))
   {
     halStatus = HAL_DCMIPP_PIPE_DisableISPRawBayer2RGB(hIsp->hDcmipp, DCMIPP_PIPE1);
   }
   else
   {
-    switch(pConfig->type)
+    switch(hIsp->sensorInfo.bayer_pattern)
     {
       case ISP_DEMOS_TYPE_RGGB:
         rawBayerCfg.RawBayerType = DCMIPP_RAWBAYER_RGGB;
