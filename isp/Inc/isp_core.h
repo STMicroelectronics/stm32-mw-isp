@@ -477,6 +477,7 @@ typedef struct
   uint32_t AncillaryPipe_FrameCount;
   uint32_t DumpPipe_FrameCount;
   ISP_SensorInfoTypeDef sensorInfo;
+  bool isInitialized;
 } ISP_HandleTypeDef;
 
 /* Exported constants --------------------------------------------------------*/

@@ -159,6 +159,8 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
   /* Initialize the statistic engine */
   ISP_SVC_Stats_Init(hIsp);
 
+  hIsp->isInitialized = true;
+
   return ISP_OK;
 }
 
@@ -175,6 +177,11 @@ ISP_StatusTypeDef ISP_DeInit(ISP_HandleTypeDef *hIsp)
   if (hIsp == NULL)
   {
     return ISP_ERR_EINVAL;
+  }
+
+  if (hIsp->isInitialized != true)
+  {
+    return ISP_OK;
   }
 
   /* DeInitialize algorithms */
