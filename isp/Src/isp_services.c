@@ -20,6 +20,7 @@
 #include "isp_core.h"
 #include "isp_services.h"
 #ifdef ISP_MW_TUNING_TOOL_SUPPORT
+#include "isp_tool_com.h"
 #include "isp_cmd_parser.h"
 #endif
 
@@ -2258,4 +2259,18 @@ int32_t ISP_SVC_Misc_GetEstimatedLux(ISP_HandleTypeDef *hIsp, uint8_t averageL)
   Meta.lux = (uint32_t)((lux < 0) ? 0 : lux);
 
   return (lux < 0) ? 0 : lux;
+}
+
+/**
+  * @brief  ISP_SVC_Start_ToolCom
+  *         Start communication stack
+  * @retval ISP status
+  */
+int32_t ISP_SVC_Start_ToolCom()
+{
+#ifdef ISP_MW_TUNING_TOOL_SUPPORT
+  ISP_ToolCom_Init();
+#endif
+
+  return ISP_OK;
 }

@@ -67,10 +67,6 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
 
   memset(hIsp, 0, sizeof(*hIsp));
 
-#ifdef ISP_MW_TUNING_TOOL_SUPPORT
-  ISP_ToolCom_Init();
-#endif
-
   hIsp->hDcmipp = hDcmipp;
   hIsp->cameraInstance = CameraInstance;
   hIsp->MainPipe_FrameCount = 0;
