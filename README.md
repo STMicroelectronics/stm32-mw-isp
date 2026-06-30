@@ -1,6 +1,6 @@
 # STM32 ISP Library
 
-![latest tag](https://img.shields.io/badge/tag-2.0.1-blue)
+![latest tag](https://img.shields.io/badge/tag-2.0.2-blue)
 
 The ISP Library middleware (running on the target) hosts 2A algorithms
 (Auto Exposure and Auto White Balance) and mechanisms to control the
@@ -13,23 +13,31 @@ To activate this communication through USB link, the compilation flag
 ISP_MW_TUNING_TOOL_SUPPORT must be enabled.
 
 ## Structure
+
 - isp: core of the ISP Library with the ISP parameter configuration
 - isp_param_conf: collection of sensor tuning parameters
 
 ## Enhancements, new features
-- Minor update for security level
+
+- Changed UVC name (the UVC camera might need to be reinstalled)
+- Minor update
 
 ## Compatibility
-Compatible with STM32 ISP IQTune 2.0.0 (No backward compatibility with previous STM32 ISP IQTune version).
+
+Compatible with STM32 ISP IQTune 2.1.0 (No backward compatibility with previous STM32 ISP IQTune version).
 
 ## Known Issues and Limitations
+
 None
 
 ## STM32 ISP IQTune desktop application
+
 <https://www.st.com/en/development-tools/stm32-isp-iqtune.html>
 
 ## STM32 ISP Wiki documentation
+
 <https://wiki.st.com/stm32mcu/wiki/Category:ISP>
 
 ## STM32 ISP tuning procedure
+
 <https://wiki.st.com/stm32mcu/wiki/ISP:How_to_tune_ISP_using_the_STM32_ISP_IQTune>
