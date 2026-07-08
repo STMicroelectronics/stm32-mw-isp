@@ -445,6 +445,49 @@ static ISP_SVC_StatEngineStage GetStatCycleEnd(ISP_SVC_StatLocation location)
   return stage;
 }
 
+static int sorting_color(const void *pa, const void *pb)
+{
+  const uint32_t *a = pa;
+  const uint32_t *b = pb;
+  uint32_t ca = a[0] ? a[0] : UINT32_MAX;
+  uint32_t cb = b[0] ? b[0] : UINT32_MAX;
+
+  return ca == cb ? 0 : (ca < cb ? -1 : 1);
+}
+
+static void sort_awb_parameters(const ISP_AWBAlgoTypeDef *src, ISP_AWBAlgoTypeDef *dst)
+{
+  uint32_t color_with_index[ISP_AWB_COLORTEMP_REF][2];
+  int i;
+
+  /* init color index array */
+  for (i = 0; i < ISP_AWB_COLORTEMP_REF; i++)
+  {
+    color_with_index[i][0] = src->referenceColorTemp[i];
+    color_with_index[i][1] = i;
+  }
+
+  /* sort color_with_index by color value */
+  qsort(color_with_index, ISP_AWB_COLORTEMP_REF, sizeof(color_with_index[0]), sorting_color);
+
+  /* copy into dst using sorted index */
+  for (i = 0; i < ISP_AWB_COLORTEMP_REF; i++)
+  {
+    int idx = color_with_index[i][1];
+
+    if (idx == i)
+      continue;
+
+    memcpy(dst->label[i], src->label[idx], sizeof(dst->label[0]));
+    dst->referenceColorTemp[i] = src->referenceColorTemp[idx];
+    dst->ispGainR[i] = src->ispGainR[idx];
+    dst->ispGainG[i] = src->ispGainG[idx];
+    dst->ispGainB[i] = src->ispGainB[idx];
+    memcpy(dst->coeff[i], src->coeff[idx], sizeof(dst->coeff[0]));
+    memcpy(dst->referenceRGB[i], src->referenceRGB[idx], sizeof(dst->referenceRGB[0]));
+  }
+}
+
 uint8_t LuminanceFromRGB(uint8_t r, uint8_t g, uint8_t b)
 {
   /* Compute luminance from RGB components (BT.601) */
@@ -1670,6 +1713,8 @@ ISP_StatusTypeDef ISP_SVC_IQParam_Init(ISP_HandleTypeDef *hIsp, const ISP_IQPara
   (void)hIsp; /* unused */
 
   ISP_IQParamCache = *ISP_IQParamCacheInit;
+  sort_awb_parameters(&ISP_IQParamCacheInit->AWBAlgo ,&ISP_IQParamCache.AWBAlgo);
+
   return ISP_OK;
 }
 
