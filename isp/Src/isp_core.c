@@ -293,18 +293,30 @@ ISP_StatusTypeDef ISP_Start(ISP_HandleTypeDef *hIsp)
   }
 
   /* Configure statistic area if not already configured by ISP_SetStatArea() */
+  ISP_DecimationTypeDef decimation;
+  ISP_GetDecimationFactor(hIsp, &decimation);
   if ((hIsp->statArea.XSize == 0) || (hIsp->statArea.YSize == 0))
   {
     if ((IQParamConfig->statAreaStatic.XSize == 0) || (IQParamConfig->statAreaStatic.XSize == ISP_STATWINDOW_MAX))
     {
       /* Configure static area width to the maximum value */
-      IQParamConfig->statAreaStatic.XSize = hIsp->sensorInfo.width - IQParamConfig->statAreaStatic.X0;
+      IQParamConfig->statAreaStatic.X0 = 0;
+      IQParamConfig->statAreaStatic.XSize = hIsp->sensorInfo.width;
     }
 
     if ((IQParamConfig->statAreaStatic.YSize == 0) || (IQParamConfig->statAreaStatic.YSize == ISP_STATWINDOW_MAX))
     {
       /* Configure static area height to the maximum value */
-      IQParamConfig->statAreaStatic.YSize = hIsp->sensorInfo.height - IQParamConfig->statAreaStatic.Y0;
+      IQParamConfig->statAreaStatic.Y0 = 0;
+      IQParamConfig->statAreaStatic.YSize = hIsp->sensorInfo.height;
+    }
+
+    if (decimation.factor > 1)
+    {
+      IQParamConfig->statAreaStatic.X0 /= decimation.factor;
+      IQParamConfig->statAreaStatic.Y0 /= decimation.factor;
+      IQParamConfig->statAreaStatic.XSize /= decimation.factor;
+      IQParamConfig->statAreaStatic.YSize /= decimation.factor;
     }
 
     /* Configure statistic area from IQ params */

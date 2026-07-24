@@ -200,9 +200,8 @@ static uint8_t GetAvgStats(ISP_StatAreaTypeDef *pStatArea, ISP_SVC_StatLocation 
 {
   uint32_t nb_comp_pix, comp_divider;
 
-  /* Number of pixels computed from Stat Area and considering decimation */
+  /* Number of pixels computed from Stat Area */
   nb_comp_pix = pStatArea->XSize * pStatArea->YSize;
-  nb_comp_pix /= ISP_DecimationValue.factor * ISP_DecimationValue.factor;
 
   if (location == ISP_STAT_LOC_DOWN)
   {
@@ -741,7 +740,7 @@ ISP_StatusTypeDef ISP_SVC_ISP_SetContrast(ISP_HandleTypeDef *hIsp, ISP_ContrastT
 
 /**
   * @brief  ISP_SVC_ISP_SetStatArea
-  *         Set the ISP Statistic area
+  *         Set the ISP Statistic area in HW registers
   * @param  hIsp: ISP device handle
   * @param  pConfig: Pointer to statistic area used by the IQ algorithms
   * @retval operation result
@@ -759,17 +758,17 @@ ISP_StatusTypeDef ISP_SVC_ISP_SetStatArea(ISP_HandleTypeDef *hIsp, ISP_StatAreaT
       (pConfig->YSize > ISP_STATWINDOW_MAX) ||
       (pConfig->XSize < ISP_STATWINDOW_MIN) ||
       (pConfig->YSize < ISP_STATWINDOW_MIN) ||
-      (pConfig->X0 + pConfig->XSize > hIsp->sensorInfo.width) ||
-      (pConfig->Y0 + pConfig->YSize > hIsp->sensorInfo.height))
+      (pConfig->X0 + pConfig->XSize > hIsp->sensorInfo.width / ISP_DecimationValue.factor) ||
+      (pConfig->Y0 + pConfig->YSize > hIsp->sensorInfo.height / ISP_DecimationValue.factor))
   {
     return ISP_ERR_STATAREA_EINVAL;
   }
 
   /* Set coordinates in the 'decimated' referential */
-  currentStatAreaCfg.HStart = pConfig->X0 / ISP_DecimationValue.factor;
-  currentStatAreaCfg.VStart = pConfig->Y0 / ISP_DecimationValue.factor;
-  currentStatAreaCfg.HSize = pConfig->XSize / ISP_DecimationValue.factor;
-  currentStatAreaCfg.VSize = pConfig->YSize / ISP_DecimationValue.factor;
+  currentStatAreaCfg.HStart = pConfig->X0;
+  currentStatAreaCfg.VStart = pConfig->Y0;
+  currentStatAreaCfg.HSize = pConfig->XSize;
+  currentStatAreaCfg.VSize = pConfig->YSize;
 
   if (HAL_DCMIPP_PIPE_SetISPAreaStatisticExtractionConfig(hIsp->hDcmipp, DCMIPP_PIPE1,
                                                           &currentStatAreaCfg) != HAL_OK)
@@ -794,7 +793,7 @@ ISP_StatusTypeDef ISP_SVC_ISP_SetStatArea(ISP_HandleTypeDef *hIsp, ISP_StatAreaT
 
 /**
   * @brief  ISP_SVC_ISP_GetStatArea
-  *         Get the ISP Statistic area
+  *         Get the ISP Statistic area set in HW registers
   * @param  hIsp: ISP device handle
   * @param  pConfig: Pointer to statistic area used by the IQ algorithms
   * @retval operation result
@@ -822,10 +821,10 @@ ISP_StatusTypeDef ISP_SVC_ISP_GetStatArea(ISP_HandleTypeDef *hIsp, ISP_StatAreaT
                                                         &currentStatAreaCfg);
 
     /* Consider decimation */
-    pConfig->X0 = currentStatAreaCfg.HStart * ISP_DecimationValue.factor;
-    pConfig->Y0 = currentStatAreaCfg.VStart * ISP_DecimationValue.factor;
-    pConfig->XSize = currentStatAreaCfg.HSize * ISP_DecimationValue.factor;
-    pConfig->YSize = currentStatAreaCfg.VSize * ISP_DecimationValue.factor;
+    pConfig->X0 = currentStatAreaCfg.HStart;
+    pConfig->Y0 = currentStatAreaCfg.VStart;
+    pConfig->XSize = currentStatAreaCfg.HSize;
+    pConfig->YSize = currentStatAreaCfg.VSize;
   }
 
   return ISP_OK;

@@ -465,6 +465,8 @@ static ISP_StatusTypeDef ISP_CmdParser_SetConfig(ISP_HandleTypeDef *hIsp, uint8_
   ISP_CMD_TypeDef base_cmd, c;
   ISP_IQParamTypeDef *IQParamConfig;
   uint8_t cmd_id;
+  ISP_DecimationTypeDef decimation;
+  ISP_GetDecimationFactor(hIsp, &decimation);
 
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
 
@@ -533,6 +535,12 @@ static ISP_StatusTypeDef ISP_CmdParser_SetConfig(ISP_HandleTypeDef *hIsp, uint8_
 
   case ISP_CMD_STATISTICAREA:
     /* Update both ISP and IQ params */
+	/* From IQTune user point of view, stat area is considered on full sensor resolution.
+	 * So we need to apply the decimation factor if any */
+    c.statArea.data.X0 /= decimation.factor;
+    c.statArea.data.Y0 /= decimation.factor;
+    c.statArea.data.XSize /= decimation.factor;
+    c.statArea.data.YSize /= decimation.factor;
     ret = ISP_SVC_ISP_SetStatArea(hIsp, &c.statArea.data);
     if (ret == ISP_OK)
     {
@@ -679,6 +687,12 @@ static ISP_StatusTypeDef ISP_CmdParser_SetConfig(ISP_HandleTypeDef *hIsp, uint8_
 
   case ISP_CMD_USER_STATISTICAREA:
     /* Update both ISP and IQ params */
+	/* From IQTune user point of view, stat area is considered on full sensor resolution.
+	 * So we need to apply the decimation factor if any */
+    c.statArea.data.X0 /= decimation.factor;
+    c.statArea.data.Y0 /= decimation.factor;
+    c.statArea.data.XSize /= decimation.factor;
+    c.statArea.data.YSize /= decimation.factor;
     ret = ISP_SetStatArea(hIsp, &c.statArea.data);
     if (ret == ISP_OK)
     {
@@ -755,6 +769,8 @@ static ISP_StatusTypeDef ISP_CmdParser_GetConfig(ISP_HandleTypeDef *hIsp, uint8_
   ISP_CMD_TypeDef c = { 0 };
   uint8_t cmd_id;
   uint32_t *pFrame = NULL;
+  ISP_DecimationTypeDef decimation;
+  ISP_GetDecimationFactor(hIsp, &decimation);
 
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
 
@@ -780,7 +796,13 @@ static ISP_StatusTypeDef ISP_CmdParser_GetConfig(ISP_HandleTypeDef *hIsp, uint8_
 
   case ISP_CMD_STATISTICAREA:
     /* Get actual value from ISP, which may be defined by a static configuration or by the running application */
+    /* From IQTune user point of view, stat area is considered on full sensor resolution.
+     *  So we need to revert the decimation factor if any */
     ret = ISP_SVC_ISP_GetStatArea(hIsp, &c.statArea.data);
+    c.statArea.data.X0 *= decimation.factor;
+    c.statArea.data.Y0 *= decimation.factor;
+    c.statArea.data.XSize *= decimation.factor;
+    c.statArea.data.YSize *= decimation.factor;
     break;
 
   case ISP_CMD_SENSORGAIN:
@@ -893,7 +915,13 @@ static ISP_StatusTypeDef ISP_CmdParser_GetConfig(ISP_HandleTypeDef *hIsp, uint8_
 
   case ISP_CMD_USER_STATISTICAREA:
     /* Get actual value from ISP, which may be defined by a static configuration or by the running application */
+    /* From IQTune user point of view, stat area is considered on full sensor resolution.
+     *  So we need to revert the decimation factor if any */
     ret = ISP_GetStatArea(hIsp, &c.statArea.data);
+    c.statArea.data.X0 *= decimation.factor;
+    c.statArea.data.Y0 *= decimation.factor;
+    c.statArea.data.XSize *= decimation.factor;
+    c.statArea.data.YSize *= decimation.factor;
     break;
 
   case ISP_CMD_USER_LUX:
