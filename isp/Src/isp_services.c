@@ -2201,7 +2201,7 @@ ISP_StatusTypeDef ISP_SVC_Stats_EvaluateUp(ISP_HandleTypeDef *hIsp, ISP_Statisti
   upG = (double)pDownStats->averageG;
   upB = (double)pDownStats->averageB;
 
-  if ((ISP_SVC_ISP_GetGain(hIsp, &ISPGain) == ISP_OK) && ISPGain.enable && ISPGain.ispGainR && ISPGain.ispGainG && ISPGain.ispGainR)
+  if ((ISP_SVC_ISP_GetGain(hIsp, &ISPGain) == ISP_OK) && ISPGain.enable && ISPGain.ispGainR && ISPGain.ispGainG && ISPGain.ispGainB)
   {
     /* Revert gain */
     upR *= (double)ISP_GAIN_PRECISION_FACTOR / ISPGain.ispGainR;
