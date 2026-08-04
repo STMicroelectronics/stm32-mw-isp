@@ -500,6 +500,7 @@ typedef struct
 #define ISP_STATWINDOW_MAX                  (4094U)
 #define ISP_STATWINDOW_MIN                  (4U)
 #define ISP_AWB_ENABLE_RECONFIGURE          (255U)
+#define ISP_LUXREF_UNTUNED                  (0U)
 
 /* A well exposed picture (taking into account the gamma correction) has its
  * Luminance average at the middle of the luminance range.

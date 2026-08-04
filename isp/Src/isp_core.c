@@ -758,8 +758,33 @@ ISP_StatusTypeDef ISP_GetLuxEstimation(ISP_HandleTypeDef *hIsp, uint32_t *pLux)
 {
   ISP_StatusTypeDef ret = ISP_OK;
   ISP_SVC_StatStateTypeDef stats;
+  ISP_IQParamTypeDef *IQParamConfig;
   int32_t lux;
   uint8_t averageL;
+
+  if (pLux == NULL)
+  {
+    return ISP_ERR_EINVAL;
+  }
+
+  /* When the AE lux references are untuned, the lux cannot be estimated. Return 0 with an OK
+     status so that this query is non-blocking for the caller. */
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  if ((IQParamConfig->luxRef.HL_LuxRef == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.HL_Expo1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.HL_Lum1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.HL_Expo2 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.HL_Lum2 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_LuxRef == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_Expo1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_Lum1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_Expo2 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_Lum2 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.calibFactor == (float)ISP_LUXREF_UNTUNED))
+  {
+    *pLux = 0;
+    return ISP_OK;
+  }
 
   ret = ISP_SVC_Stats_GetLatest(hIsp, &stats);
   if (ret != ISP_OK)
@@ -780,7 +805,7 @@ ISP_StatusTypeDef ISP_GetLuxEstimation(ISP_HandleTypeDef *hIsp, uint32_t *pLux)
 
   lux = ISP_SVC_Misc_GetEstimatedLux(hIsp, averageL);
 
-  if ((pLux == NULL) || (lux < 0))
+  if (lux < 0)
   {
     ret = ISP_ERR_EINVAL;
   }

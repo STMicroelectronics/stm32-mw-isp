@@ -2255,8 +2255,10 @@ int32_t ISP_SVC_Misc_GetEstimatedLux(ISP_HandleTypeDef *hIsp, uint8_t averageL)
 
   if ((IQParamConfig->luxRef.HL_Expo1 == IQParamConfig->luxRef.HL_Expo2) ||
       (IQParamConfig->luxRef.LL_Expo1 == IQParamConfig->luxRef.LL_Expo2) ||
-      (IQParamConfig->luxRef.HL_Lum1 == 0) ||
-      (IQParamConfig->luxRef.LL_Lum1 == 0))
+      (IQParamConfig->luxRef.HL_Lum1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_Lum1 == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.HL_LuxRef == ISP_LUXREF_UNTUNED) ||
+      (IQParamConfig->luxRef.LL_LuxRef == ISP_LUXREF_UNTUNED))
   {
     /* Uncalibrated lux reference points */
     return -1;
