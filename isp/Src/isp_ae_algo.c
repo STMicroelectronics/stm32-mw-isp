@@ -76,7 +76,7 @@ void isp_ae_init(ISP_HandleTypeDef *hIsp)
 }
 
 /**
-  * @brief  isp_ae_compute_antiflcker
+  * @brief  isp_ae_compute_antiflicker
   *         ONLY USEFUL WHEN WHEN ANTI-FLICKER IS ACTIVATED
   *         Otherwise exposure time and gain are unchanged
   *         This function will compute an exposure time that eliminates the flickering effect
@@ -87,7 +87,7 @@ void isp_ae_init(ISP_HandleTypeDef *hIsp)
   * @param  adjusted_exposure: pointer to the new exposure time value (us)
   * @retval None
   */
-static void isp_ae_compute_antiflcker(uint32_t gain, uint32_t exposure,
+static void isp_ae_compute_antiflicker(uint32_t gain, uint32_t exposure,
                                       uint32_t *adjusted_gain, uint32_t *adjusted_exposure)
 {
   /* Get equivalent gain/exposure where exposure is a multiple of the flickering period */
@@ -346,6 +346,37 @@ static double isp_ae_compute_coarse_exposure(uint32_t lux, double a, double b, u
 }
 
 /**
+  * @brief  isp_ae_apply_luminance_ratio
+  *         Applies luminance ratio scaling on global exposure with an optional exponent.
+  *         Formula: new = cur * (target / averageL)^exp, where exp is clamped to [0, 1].
+  * @param  cur_global_exposure: current global exposure
+  * @param  averageL           : current average luminance statistic
+  * @param  convSpeedExp       : ratio exponent linked to convergence speed, in range [0, 1]
+  * @retval scaled global exposure
+  */
+static double isp_ae_apply_luminance_ratio(double cur_global_exposure, uint32_t averageL, double convSpeedExp)
+{
+  double ratio;
+
+  if (averageL == 0U)
+  {
+    return cur_global_exposure;
+  }
+
+  if (convSpeedExp < 0.0)
+  {
+    convSpeedExp = 0.0;
+  }
+  else if (convSpeedExp > 1.0)
+  {
+    convSpeedExp = 1.0;
+  }
+
+  ratio = (double)IQParamConfig->AECAlgo.exposureTarget / averageL;
+  return cur_global_exposure * pow(ratio, convSpeedExp);
+}
+
+/**
   * @brief  isp_ae_validate_exposure_increase
   *         Validates and corrects the new global exposure when exposure should be increased
   *         (averageL < exposureTarget). Handles wrong estimation correction and applies
@@ -364,25 +395,14 @@ static void isp_ae_validate_exposure_increase(double *new_global_exposure, doubl
   if (*new_global_exposure <= cur_global_exposure)
   {
     /* Wrong estimation, to be corrected */
-    *new_global_exposure = -1;
-
-    /* Same lux estimation but previous setting did not allow convergence, so we need to change it */
-    if ((abs((int32_t)lux - (int32_t)previous_lux) <= (float)lux * 0.05f) && (lux != 0))
+    if (averageL != 0)
     {
-      *new_global_exposure = cur_global_exposure * ((double)IQParamConfig->AECAlgo.exposureTarget / averageL);
+      *new_global_exposure = isp_ae_apply_luminance_ratio(cur_global_exposure, averageL, 1.0);
     }
-
-    if (*new_global_exposure <= 0)
+    else
     {
-      /* Increase exposure with small increment to get closer to target */
-      if (cur_global_exposure <= pSensorInfo->exposure_max)
-      {
-        *new_global_exposure = averageL ? cur_global_exposure * (double)IQParamConfig->AECAlgo.exposureTarget / averageL : cur_global_exposure + AE_EXPOSURE_COARSE_INCREMENT;
-      }
-      else
-      {
-        *new_global_exposure = pSensorInfo->exposure_max * MDB_TO_LINEAR(curGain + AE_GAIN_COARSE_INCREMENT);
-      }
+      /* averageL == 0, low lux or sensor exposure is set at its mininmal value */
+      *new_global_exposure = (cur_global_exposure > pSensorInfo->exposure_min) ? cur_global_exposure * 1.1 : 2000;
     }
   }
 
@@ -422,25 +442,14 @@ static void isp_ae_validate_exposure_decrease(double *new_global_exposure, doubl
   if (*new_global_exposure >= cur_global_exposure)
   {
     /* Wrong estimation, to be corrected */
-    *new_global_exposure = -1;
-
-    /* Same lux estimation but previous setting did not allow convergence, so we need to change it */
-    if ((abs((int32_t)lux - (int32_t)previous_lux) <= (float)lux * 0.05f) && (lux != 0))
+    if (averageL != 0)
     {
-      *new_global_exposure = cur_global_exposure * ((double)IQParamConfig->AECAlgo.exposureTarget / averageL);
+      *new_global_exposure = isp_ae_apply_luminance_ratio(cur_global_exposure, averageL, 1.0);
     }
-
-    if (*new_global_exposure <= 0)
+    else
     {
-      /* Decrease exposure with small decrement to get closer to target */
-      if (cur_global_exposure <= pSensorInfo->exposure_max)
-      {
-        *new_global_exposure = averageL ? cur_global_exposure * (double)IQParamConfig->AECAlgo.exposureTarget / averageL : cur_global_exposure - AE_EXPOSURE_COARSE_DECREMENT;
-      }
-      else
-      {
-        *new_global_exposure = pSensorInfo->exposure_max * MDB_TO_LINEAR(curGain - AE_GAIN_COARSE_DECREMENT);
-      }
+      /* averageL == 0 (should be filtered earlier): bump exposure to avoid div-by-zero */
+      *new_global_exposure = cur_global_exposure * 0.9;
     }
   }
 
@@ -478,36 +487,23 @@ static void isp_ae_process_fine_convergence(uint32_t lux, uint32_t averageL,
                                             double cur_global_exposure, uint32_t curGain, uint32_t curExposure,
                                             uint32_t *pExposure, uint32_t *pGain)
 {
-  double new_global_exposure;
+  double new_global_exposure = cur_global_exposure;
 
   /* Check if fine convergence processing is required */
   if (((lux > AE_LOW_LUX_LIMIT) && (abs((int32_t)averageL - (int32_t)IQParamConfig->AECAlgo.exposureTarget) > AE_FINE_TOLERANCE)) ||
       ((lux <= AE_LOW_LUX_LIMIT) && (abs((int32_t)averageL - (int32_t)IQParamConfig->AECAlgo.exposureTarget) > AE_FINE_TOLERANCE_LOW_LUX(IQParamConfig->AECAlgo.exposureTarget))))
   {
     /* FINE CONVERGENCE not reached: apply small adjustments */
-    if (averageL < IQParamConfig->AECAlgo.exposureTarget)
+    if (averageL > 0)
     {
-      /* Slightly increase exposure */
-      if (cur_global_exposure <= pSensorInfo->exposure_max)
-      {
-        new_global_exposure = averageL ? cur_global_exposure * (double)IQParamConfig->AECAlgo.exposureTarget / averageL : cur_global_exposure + AE_EXPOSURE_FINE_INCREMENT;
-      }
-      else
-      {
-        new_global_exposure = pSensorInfo->exposure_max * MDB_TO_LINEAR(curGain + AE_GAIN_FINE_INCREMENT);
-      }
+      /* Compute new global exposure based on the ratio of target to current average luminance */
+      new_global_exposure = isp_ae_apply_luminance_ratio(cur_global_exposure, averageL, 1.0);
     }
     else
     {
-      /* Slightly decrease exposure */
-      if (cur_global_exposure <= pSensorInfo->exposure_max)
-      {
-        new_global_exposure = averageL ? cur_global_exposure * (double)IQParamConfig->AECAlgo.exposureTarget / averageL : cur_global_exposure - AE_EXPOSURE_FINE_DECREMENT;
-      }
-      else
-      {
-        new_global_exposure = pSensorInfo->exposure_max * MDB_TO_LINEAR(curGain - AE_GAIN_FINE_DECREMENT);
-      }
+      /* averageL == 0 (should be filtered earlier): bump exposure to avoid div-by-zero
+         In this case, we have a dark frame and in any case, an increment should be added */
+      new_global_exposure += AE_EXPOSURE_FINE_INCREMENT;
     }
 
     /* Clamp and split exposure into exposure value and gain */
@@ -574,7 +570,7 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
   double cur_global_exposure = exposure * MDB_TO_LINEAR(gain);
   double new_global_exposure;
   uint32_t custom_low_lux_limit, custom_high_lux_limit;
-  uint32_t curExposure, curGain;
+  uint32_t adjExposure, adjGain;
 
   /* Compute lux thresholds for model selection */
   isp_ae_compute_lux_limits(&custom_low_lux_limit, &custom_high_lux_limit);
@@ -586,7 +582,7 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
   }
 
   /**** Get equivalent sensor gain/exposure where exposure is at its max possible value ****/
-  isp_ae_reverse_antiflicker(gain, exposure, &curGain, &curExposure);
+  isp_ae_reverse_antiflicker(gain, exposure, &gain, &exposure);
 
   /**** Check if coarse convergence is reached ****/
   /* Tolerance for coarse convergence is different in case we are in very low lux conditions (slightly increased) */
@@ -603,28 +599,28 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
     /* Validate and correct the estimation */
     if (averageL < IQParamConfig->AECAlgo.exposureTarget)
     {
-      isp_ae_validate_exposure_increase(&new_global_exposure, cur_global_exposure, lux, averageL, curGain);
+      isp_ae_validate_exposure_increase(&new_global_exposure, cur_global_exposure, lux, averageL, gain);
     }
     else
     {
-      isp_ae_validate_exposure_decrease(&new_global_exposure, cur_global_exposure, lux, averageL, curGain);
+      isp_ae_validate_exposure_decrease(&new_global_exposure, cur_global_exposure, lux, averageL, gain);
     }
 
     /* Clamp and split exposure into exposure value and gain (with digital gain limiting) */
-    isp_ae_split_global_exposure(new_global_exposure, pExposure, pGain, 1, curGain);
+    isp_ae_split_global_exposure(new_global_exposure, pExposure, pGain, 1, gain);
   }
   else
   {
     /**** COARSE CONVERGENCE is reached - process fine convergence ****/
-    isp_ae_process_fine_convergence(lux, averageL, cur_global_exposure, curGain, curExposure, pExposure, pGain);
+    isp_ae_process_fine_convergence(lux, averageL, cur_global_exposure, gain, exposure, pExposure, pGain);
   }
 
   /**** Consider flickering period constraint ****/
-  isp_ae_compute_antiflcker(*pGain, *pExposure, &curGain, &curExposure);
+  isp_ae_compute_antiflicker(*pGain, *pExposure, &adjGain, &adjExposure);
 
   /* Return final value of sensor exposure time and gain */
-  *pExposure = curExposure;
-  *pGain = curGain;
+  *pExposure = adjExposure;
+  *pGain = adjGain;
 
   /* Store lux value to avoid making the same exposure estimation if it did not allow to reach convergence */
   previous_lux = lux;
