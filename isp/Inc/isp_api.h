@@ -42,6 +42,8 @@ ISP_StatusTypeDef ISP_GetExposureTarget(ISP_HandleTypeDef *hIsp, ISP_ExposureCom
 ISP_StatusTypeDef ISP_ListWBRefModes(ISP_HandleTypeDef *hIsp, uint32_t RefColorTemp[]);
 ISP_StatusTypeDef ISP_SetAECState(ISP_HandleTypeDef *hIsp, uint8_t enable);
 ISP_StatusTypeDef ISP_GetAECState(ISP_HandleTypeDef *hIsp, uint8_t *pEnable);
+ISP_StatusTypeDef ISP_SetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_ConvergenceSpeedTypeDef convergenceSpeed);
+ISP_StatusTypeDef ISP_GetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_ConvergenceSpeedTypeDef *pConvergenceSpeed);
 ISP_StatusTypeDef ISP_SetWBRefMode(ISP_HandleTypeDef *hIsp, uint8_t Automatic, uint32_t RefColorTemp);
 ISP_StatusTypeDef ISP_GetWBRefMode(ISP_HandleTypeDef *hIsp, uint8_t *pAutomatic, uint32_t *pRefColorTemp);
 ISP_StatusTypeDef ISP_GetDecimationFactor(ISP_HandleTypeDef *hIsp, ISP_DecimationTypeDef *pDecimation);

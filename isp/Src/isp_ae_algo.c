@@ -32,14 +32,9 @@
 #define AE_LOW_LUX_LIMIT                    50    /* lux */
 
 #define AE_EXPOSURE_COARSE_INCREMENT        500   /* us */
-#define AE_EXPOSURE_COARSE_DECREMENT        300   /* us */
 #define AE_EXPOSURE_FINE_INCREMENT          150   /* us */
-#define AE_EXPOSURE_FINE_DECREMENT          100   /* us */
 
 #define AE_GAIN_COARSE_INCREMENT            2000  /* mdB */
-#define AE_GAIN_COARSE_DECREMENT            1500  /* mdB */
-#define AE_GAIN_FINE_INCREMENT              500   /* mdB */
-#define AE_GAIN_FINE_DECREMENT              300   /* mdB */
 
 #define AE_MAX_GAIN_INCREMENT               10000 /* mdB */
 
@@ -624,4 +619,75 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
 
   /* Store lux value to avoid making the same exposure estimation if it did not allow to reach convergence */
   previous_lux = lux;
+}
+
+/**
+  * @brief  isp_ae_get_new_exposure_ratio
+  *         Computes new sensor exposure from luminance ratio only:
+  *         new = cur * (target / averageL)^convSpeedExp
+  *         If averageL is 0, ratio cannot be applied. In this case exposure or gain is incremented.
+  * @param  averageL   : current average luminance statistic
+  * @param  convSpeedExp: ratio exponent in range [0, 1]
+  * @param  pExposure  : pointer to the new exposure time value (us)
+  * @param  pGain      : pointer to the new sensor gain value (mdB)
+  * @param  exposure   : current sensor exposure time value (us)
+  * @param  gain       : current sensor gain value (mdB)
+  * @retval None
+  */
+void isp_ae_get_new_exposure_ratio(uint32_t averageL, double convSpeedExp,
+                                   uint32_t *pExposure, uint32_t *pGain,
+                                   uint32_t exposure, uint32_t gain)
+{
+  double new_global_exposure;
+  double cur_global_exposure = exposure * MDB_TO_LINEAR(gain);
+  uint32_t adjExposure, adjGain;
+
+  /* Reuse the same bootstrap logic as lux-model AE to escape low-start conditions quickly. */
+  if (isp_ae_handle_start_conditions(averageL, exposure, gain, pExposure, pGain))
+  {
+    isp_ae_compute_antiflicker(*pGain, *pExposure, &adjGain, &adjExposure);
+    *pExposure = adjExposure;
+    *pGain = adjGain;
+    return;
+  }
+
+  if (averageL == 0U)
+  {
+    if (exposure >= pSensorInfo->exposure_max)
+    {
+      *pExposure = pSensorInfo->exposure_max;
+      *pGain = gain + AE_GAIN_COARSE_INCREMENT;
+      if (*pGain > pSensorInfo->gain_max)
+      {
+        *pGain = pSensorInfo->gain_max;
+      }
+    }
+    else
+    {
+      *pExposure = exposure + AE_EXPOSURE_COARSE_INCREMENT;
+      if (*pExposure > pSensorInfo->exposure_max)
+      {
+        *pExposure = pSensorInfo->exposure_max;
+      }
+      *pGain = gain;
+    }
+  }
+  else if (abs((int32_t)averageL - (int32_t)IQParamConfig->AECAlgo.exposureTarget) <= AE_FINE_TOLERANCE)
+  {
+    /* Fine convergence reached: luminance is already within tolerance of the target.
+       Keep the current exposure/gain to avoid a useless ratio reassessment that would
+       otherwise apply a tiny correction each frame and make the image oscillate. */
+    *pExposure = exposure;
+    *pGain = gain;
+  }
+  else
+  {
+    new_global_exposure = isp_ae_apply_luminance_ratio(cur_global_exposure, averageL, convSpeedExp);
+    isp_ae_split_global_exposure(new_global_exposure, pExposure, pGain, 0, 0);
+  }
+
+  /* Keep anti-flicker behavior aligned with standard AE flow. */
+  isp_ae_compute_antiflicker(*pGain, *pExposure, &adjGain, &adjExposure);
+  *pExposure = adjExposure;
+  *pGain = adjGain;
 }

@@ -59,6 +59,7 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
                            const ISP_IQParamTypeDef *ISP_IQParamCacheInit)
 {
   ISP_StatusTypeDef ret;
+  ISP_IQParamTypeDef *IQParamConfig;
 
   if ((hIsp == NULL) || (hDcmipp == NULL) || (pAppliHelpers == NULL))
   {
@@ -107,6 +108,10 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
   {
     return ret;
   }
+
+  /* Default AE convergence speed is controlled by core API, not by IQ param config. */
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  IQParamConfig->AECAlgo.convergenceSpeed = ISP_AE_CONVERGENCESPEED_VERY_FAST;
 
   /* Set decimation configuration */
   /* Get Sensor Info */
@@ -476,6 +481,50 @@ ISP_StatusTypeDef ISP_GetAECState(ISP_HandleTypeDef *hIsp, uint8_t *pEnable)
 
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
   *pEnable = IQParamConfig->AECAlgo.enable;
+
+  return ISP_OK;
+}
+
+/**
+  * @brief  ISP_SetAEConvergenceSpeed
+  *         Set AEC algorithm convergence speed
+  * @param  hIsp: ISP device handle
+  * @param  convergenceSpeed: convergence speed enum value
+  * @retval Operation status
+  */
+ISP_StatusTypeDef ISP_SetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_ConvergenceSpeedTypeDef convergenceSpeed)
+{
+  ISP_IQParamTypeDef *IQParamConfig;
+
+  if ((hIsp == NULL) || (convergenceSpeed > ISP_AE_CONVERGENCESPEED_SLOW))
+  {
+    return ISP_ERR_EINVAL;
+  }
+
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  IQParamConfig->AECAlgo.convergenceSpeed = convergenceSpeed;
+
+  return ISP_OK;
+}
+
+/**
+  * @brief  ISP_GetAEConvergenceSpeed
+  *         Get AEC algorithm convergence speed
+  * @param  hIsp: ISP device handle
+  * @param  pConvergenceSpeed: pointer to current convergence speed
+  * @retval Operation status
+  */
+ISP_StatusTypeDef ISP_GetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_ConvergenceSpeedTypeDef *pConvergenceSpeed)
+{
+  ISP_IQParamTypeDef *IQParamConfig;
+
+  if ((hIsp == NULL) || (pConvergenceSpeed == NULL))
+  {
+    return ISP_ERR_EINVAL;
+  }
+
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  *pConvergenceSpeed = IQParamConfig->AECAlgo.convergenceSpeed;
 
   return ISP_OK;
 }

@@ -289,12 +289,21 @@ typedef enum
   ANTIFLICKER_60HZ = 60,
 } ISP_AntiFlickerTypeDef;
 
+typedef enum
+{
+  ISP_AE_CONVERGENCESPEED_VERY_FAST = 0U,
+  ISP_AE_CONVERGENCESPEED_FAST = 1U,
+  ISP_AE_CONVERGENCESPEED_MEDIUM = 2U,
+  ISP_AE_CONVERGENCESPEED_SLOW = 3U,
+} ISP_AE_ConvergenceSpeedTypeDef;
+
 typedef struct
 {
   uint8_t enable;                               /* Enable or disable */
   ISP_ExposureCompTypeDef exposureCompensation; /* Exposure Compensation (in EV) */
   uint32_t exposureTarget;                      /* Exposure Target */
   ISP_AntiFlickerTypeDef antiFlickerFreq;       /* AntiFlicker frequency (50Hz, 60Hz or 0 for disabling the feature */
+  ISP_AE_ConvergenceSpeedTypeDef convergenceSpeed; /* Convergence speed of the AE algorithm */
 } ISP_AECAlgoTypeDef;
 
 #define ISP_AWB_COLORTEMP_REF               (5U)

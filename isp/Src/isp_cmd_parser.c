@@ -611,7 +611,10 @@ static ISP_StatusTypeDef ISP_CmdParser_SetConfig(ISP_HandleTypeDef *hIsp, uint8_
     IQParamConfig->AECAlgo.enable = c.AECAlgo.data.enable;
     if (IQParamConfig->AECAlgo.enable)
     {
+      /* convergenceSpeed is not yet supported by the PC tool: preserve the value set by the embedded application */
+      ISP_AE_ConvergenceSpeedTypeDef convergenceSpeed = IQParamConfig->AECAlgo.convergenceSpeed;
       IQParamConfig->AECAlgo = c.AECAlgo.data;
+      IQParamConfig->AECAlgo.convergenceSpeed = convergenceSpeed;
     }
     /* Call the application API to set the exposureTarget based on the exposureCompensation
      * so that the algo will consider this update at its next process call
