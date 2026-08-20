@@ -53,7 +53,6 @@
 /* Private variables ---------------------------------------------------------*/
 static ISP_IQParamTypeDef *IQParamConfig;
 static ISP_SensorInfoTypeDef *pSensorInfo;
-static uint32_t previous_lux = 0;
 
 /* Global variables ----------------------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -378,13 +377,11 @@ static double isp_ae_apply_luminance_ratio(double cur_global_exposure, uint32_t 
   *         ratio consistency safeguards.
   * @param  new_global_exposure: pointer to the computed global exposure (will be corrected in place)
   * @param  cur_global_exposure: current global exposure
-  * @param  lux                : current lux value
   * @param  averageL           : current average luminance
-  * @param  curGain            : current gain after antiflicker reversal
   * @retval None
   */
 static void isp_ae_validate_exposure_increase(double *new_global_exposure, double cur_global_exposure,
-                                              uint32_t lux, uint32_t averageL, uint32_t curGain)
+                                              uint32_t averageL)
 {
   /* Check if estimation is valid (exposure should increase) */
   if (*new_global_exposure <= cur_global_exposure)
@@ -425,13 +422,11 @@ static void isp_ae_validate_exposure_increase(double *new_global_exposure, doubl
   *         ratio consistency safeguards.
   * @param  new_global_exposure: pointer to the computed global exposure (will be corrected in place)
   * @param  cur_global_exposure: current global exposure
-  * @param  lux                : current lux value
   * @param  averageL           : current average luminance
-  * @param  curGain            : current gain after antiflicker reversal
   * @retval None
   */
 static void isp_ae_validate_exposure_decrease(double *new_global_exposure, double cur_global_exposure,
-                                              uint32_t lux, uint32_t averageL, uint32_t curGain)
+                                              uint32_t averageL)
 {
   /* Check if estimation is valid (exposure should decrease) */
   if (*new_global_exposure >= cur_global_exposure)
@@ -594,11 +589,11 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
     /* Validate and correct the estimation */
     if (averageL < IQParamConfig->AECAlgo.exposureTarget)
     {
-      isp_ae_validate_exposure_increase(&new_global_exposure, cur_global_exposure, lux, averageL, gain);
+      isp_ae_validate_exposure_increase(&new_global_exposure, cur_global_exposure, averageL);
     }
     else
     {
-      isp_ae_validate_exposure_decrease(&new_global_exposure, cur_global_exposure, lux, averageL, gain);
+      isp_ae_validate_exposure_decrease(&new_global_exposure, cur_global_exposure, averageL);
     }
 
     /* Clamp and split exposure into exposure value and gain (with digital gain limiting) */
@@ -616,9 +611,6 @@ void isp_ae_get_new_exposure(uint32_t lux, uint32_t averageL, uint32_t *pExposur
   /* Return final value of sensor exposure time and gain */
   *pExposure = adjExposure;
   *pGain = adjGain;
-
-  /* Store lux value to avoid making the same exposure estimation if it did not allow to reach convergence */
-  previous_lux = lux;
 }
 
 /**
