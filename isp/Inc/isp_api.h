@@ -46,6 +46,8 @@ ISP_StatusTypeDef ISP_SetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_Conv
 ISP_StatusTypeDef ISP_GetAEConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AE_ConvergenceSpeedTypeDef *pConvergenceSpeed);
 ISP_StatusTypeDef ISP_SetWBRefMode(ISP_HandleTypeDef *hIsp, uint8_t Automatic, uint32_t RefColorTemp);
 ISP_StatusTypeDef ISP_GetWBRefMode(ISP_HandleTypeDef *hIsp, uint8_t *pAutomatic, uint32_t *pRefColorTemp);
+ISP_StatusTypeDef ISP_SetAWBConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AWB_ConvergenceSpeedTypeDef convergenceSpeed);
+ISP_StatusTypeDef ISP_GetAWBConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AWB_ConvergenceSpeedTypeDef *pConvergenceSpeed);
 ISP_StatusTypeDef ISP_GetDecimationFactor(ISP_HandleTypeDef *hIsp, ISP_DecimationTypeDef *pDecimation);
 ISP_StatusTypeDef ISP_SetStatArea(ISP_HandleTypeDef *hIsp, ISP_StatAreaTypeDef *pStatArea);
 ISP_StatusTypeDef ISP_GetStatArea(ISP_HandleTypeDef *hIsp, ISP_StatAreaTypeDef *pStatArea);

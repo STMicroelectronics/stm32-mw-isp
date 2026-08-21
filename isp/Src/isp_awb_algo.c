@@ -48,7 +48,6 @@ static ISP_StatisticsTypeDef ISP_AWB_CurrStats;
 static uint32_t ISP_AWB_CurrTemp;
 static ISP_ColorConvTypeDef ISP_AWB_CurrColorConv;
 static ISP_ISPGainTypeDef ISP_AWB_CurrISPGain;
-static int32_t ISP_AWB_Gain_LowPass_Filtered;
 static uint32_t rb_ratio_previous;
 static int error_previous;
 
@@ -213,23 +212,6 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
     }
   }
 
-  switch (ISP_AWB_Config.convergenceSpeed)
-  {
-    case ISP_AWB_CONVERGENCESPEED_FAST:
-      ISP_AWB_Gain_LowPass_Filtered = 4;
-      break;
-    case ISP_AWB_CONVERGENCESPEED_MEDIUM:
-      ISP_AWB_Gain_LowPass_Filtered = 8;
-      break;
-    case ISP_AWB_CONVERGENCESPEED_SLOW:
-      ISP_AWB_Gain_LowPass_Filtered = 12;
-      break;
-    case ISP_AWB_CONVERGENCESPEED_VERY_FAST:
-    default:
-      ISP_AWB_Gain_LowPass_Filtered = 1;
-      break;
-  }
-
   return ISP_OK;
 }
 
@@ -238,13 +220,14 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
   *         Evaluate from the input statistics, the Color Temperature and the white-balanced
   *         ColorConv and Gain configuration.
   * @param  pStats: pointer to the current RGB statistics
+  * @param  convSpeedGain: low pass filter divisor applied to the R/B ratio error. The larger, the slower the convergence
   * @param  config_changed: pointer to a boolean that is set to true if the computed config is different from the current applied config
   * @param  pColorConvConfig: pointer to the output Color Conversion configuration
   * @param  pISPGainConfig: pointer to the output ISP Gain configuration
   * @param  pColorTemp: pointer to the output estimated color temperature
   * @retval operation result
   */
- ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, bool *config_changed, ISP_ColorConvTypeDef *pColorConvConfig, ISP_ISPGainTypeDef *pISPGainConfig, uint32_t *pColorTemp)
+ ISP_StatusTypeDef ISP_AWB_GetConfig(ISP_StatisticsTypeDef *pStats, int32_t convSpeedGain, bool *config_changed, ISP_ColorConvTypeDef *pColorConvConfig, ISP_ISPGainTypeDef *pISPGainConfig, uint32_t *pColorTemp)
  {
    int exactProfId = -1;
    double interpolRatio = 0.0;
@@ -266,7 +249,7 @@ ISP_StatusTypeDef ISP_AWB_Init(ISP_AWBAlgoTypeDef *pAWBAlgo)
   }
 
   error = (int)(rb_ratio_target - rb_ratio_previous);
-  rb_ratio = rb_ratio_previous + error / ISP_AWB_Gain_LowPass_Filtered;
+  rb_ratio = rb_ratio_previous + error / convSpeedGain;
   error_previous = error;
 
   if (abs((int32_t)(rb_ratio_target - rb_ratio)) < 100)

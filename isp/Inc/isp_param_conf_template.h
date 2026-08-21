@@ -95,7 +95,6 @@ static const ISP_IQParamTypeDef ISP_IQParamCacheInit_DUMMY = {
             { 0, 0, 0 },
             { 0, 0, 0 },
         },
-        .convergenceSpeed = ISP_AWB_CONVERGENCESPEED_MEDIUM,
     },
     .contrast = {
         .enable = 0,

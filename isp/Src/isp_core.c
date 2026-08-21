@@ -109,9 +109,10 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
     return ret;
   }
 
-  /* Default AE convergence speed is controlled by core API, not by IQ param config. */
+  /* Default AE and AWB convergence speeds are controlled by core API, not by IQ param config. */
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
   IQParamConfig->AECAlgo.convergenceSpeed = ISP_AE_CONVERGENCESPEED_VERY_FAST;
+  IQParamConfig->AWBAlgo.convergenceSpeed = ISP_AWB_CONVERGENCESPEED_MEDIUM;
 
   /* Set decimation configuration */
   /* Get Sensor Info */
@@ -638,6 +639,50 @@ ISP_StatusTypeDef ISP_GetWBRefMode(ISP_HandleTypeDef *hIsp, uint8_t *pAutomatic,
 
   if (!*pAutomatic)
     ISP_SVC_Misc_GetWBRefMode(hIsp, pRefColorTemp);
+
+  return ISP_OK;
+}
+
+/**
+  * @brief  ISP_SetAWBConvergenceSpeed
+  *         Set AWB algorithm convergence speed
+  * @param  hIsp: ISP device handle
+  * @param  convergenceSpeed: convergence speed enum value
+  * @retval Operation status
+  */
+ISP_StatusTypeDef ISP_SetAWBConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AWB_ConvergenceSpeedTypeDef convergenceSpeed)
+{
+  ISP_IQParamTypeDef *IQParamConfig;
+
+  if ((hIsp == NULL) || (convergenceSpeed > ISP_AWB_CONVERGENCESPEED_SLOW))
+  {
+    return ISP_ERR_EINVAL;
+  }
+
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  IQParamConfig->AWBAlgo.convergenceSpeed = convergenceSpeed;
+
+  return ISP_OK;
+}
+
+/**
+  * @brief  ISP_GetAWBConvergenceSpeed
+  *         Get AWB algorithm convergence speed
+  * @param  hIsp: ISP device handle
+  * @param  pConvergenceSpeed: pointer to current convergence speed
+  * @retval Operation status
+  */
+ISP_StatusTypeDef ISP_GetAWBConvergenceSpeed(ISP_HandleTypeDef *hIsp, ISP_AWB_ConvergenceSpeedTypeDef *pConvergenceSpeed)
+{
+  ISP_IQParamTypeDef *IQParamConfig;
+
+  if ((hIsp == NULL) || (pConvergenceSpeed == NULL))
+  {
+    return ISP_ERR_EINVAL;
+  }
+
+  IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
+  *pConvergenceSpeed = IQParamConfig->AWBAlgo.convergenceSpeed;
 
   return ISP_OK;
 }

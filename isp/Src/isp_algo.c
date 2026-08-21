@@ -67,6 +67,14 @@ static const double ALGO_AEC_RATIO_EXP_BY_SPEED[] = {
   0.5, /* ISP_AE_CONVERGENCESPEED_SLOW */
 };
 
+/* AWB R/B ratio low pass filter divisors mapped by convergence speed enum index. */
+static const int32_t ALGO_AWB_LOWPASS_GAIN_BY_SPEED[] = {
+   1, /* ISP_AWB_CONVERGENCESPEED_VERY_FAST */
+   4, /* ISP_AWB_CONVERGENCESPEED_FAST */
+   8, /* ISP_AWB_CONVERGENCESPEED_MEDIUM */
+  12, /* ISP_AWB_CONVERGENCESPEED_SLOW */
+};
+
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 ISP_StatusTypeDef ISP_Algo_BadPixel_Init(void *hIsp, void *pAlgo);
@@ -732,6 +740,7 @@ ISP_StatusTypeDef ISP_Algo_AWB_Process(void *hIsp, void *pAlgo)
   ISP_StatusTypeDef ret_stat, ret = ISP_OK;
   uint32_t estimatedColorTemp = 0;
   bool configUpdated = false;
+  ISP_AWB_ConvergenceSpeedTypeDef convergenceSpeed;
 
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
 
@@ -796,7 +805,14 @@ ISP_StatusTypeDef ISP_Algo_AWB_Process(void *hIsp, void *pAlgo)
     /* Optimization: do not ask for Up stats, but evaluate them from the down stats */
     ISP_SVC_Stats_EvaluateUp(hIsp, &stats.down, &stats.up);
 
-    ret = ISP_AWB_GetConfig(&stats.up, &configUpdated, &ColorConvConfig, &ISPGainConfig, &estimatedColorTemp);
+    convergenceSpeed = IQParamConfig->AWBAlgo.convergenceSpeed;
+    if (convergenceSpeed > ISP_AWB_CONVERGENCESPEED_SLOW)
+    {
+      convergenceSpeed = ISP_AWB_CONVERGENCESPEED_SLOW;
+    }
+
+    ret = ISP_AWB_GetConfig(&stats.up, ALGO_AWB_LOWPASS_GAIN_BY_SPEED[convergenceSpeed], &configUpdated,
+                            &ColorConvConfig, &ISPGainConfig, &estimatedColorTemp);
 #ifdef ALGO_PERF_DBG_LOGS
       end_algo_calc = DWT->CYCCNT;
 #endif

@@ -633,13 +633,10 @@ static ISP_StatusTypeDef ISP_CmdParser_SetConfig(ISP_HandleTypeDef *hIsp, uint8_
     uint8_t originalRefRGB[ISP_AWB_COLORTEMP_REF][3];
     memcpy(originalRefRGB, IQParamConfig->AWBAlgo.referenceRGB, sizeof(IQParamConfig->AWBAlgo.referenceRGB));
     IQParamConfig->AWBAlgo.enable = c.AWBAlgo.data.enable;
-
-    if (c.AWBAlgo.data.convergenceSpeed != IQParamConfig->AWBAlgo.convergenceSpeed)
-    {
-      IQParamConfig->AWBAlgo.enable = ISP_AWB_ENABLE_RECONFIGURE;
-    }
-
+    /* convergenceSpeed is not yet supported by the PC tool: preserve the value set by the embedded application */
+    ISP_AWB_ConvergenceSpeedTypeDef awbConvergenceSpeed = IQParamConfig->AWBAlgo.convergenceSpeed;
     IQParamConfig->AWBAlgo = c.AWBAlgo.data;
+    IQParamConfig->AWBAlgo.convergenceSpeed = awbConvergenceSpeed;
     /* Patch for IQTune that does not handle the referenceRGB new params (IQTune would set all the referenceRGB to 0) */
     if ((c.AWBAlgo.data.referenceRGB[0][0] == 0) && (c.AWBAlgo.data.referenceColorTemp[0] != 0))
     {
