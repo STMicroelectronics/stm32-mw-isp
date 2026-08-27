@@ -112,7 +112,7 @@ ISP_StatusTypeDef ISP_Init(ISP_HandleTypeDef *hIsp,
   /* Default AE and AWB convergence speeds are controlled by core API, not by IQ param config. */
   IQParamConfig = ISP_SVC_IQParam_Get(hIsp);
   IQParamConfig->AECAlgo.convergenceSpeed = ISP_AE_CONVERGENCESPEED_VERY_FAST;
-  IQParamConfig->AWBAlgo.convergenceSpeed = ISP_AWB_CONVERGENCESPEED_MEDIUM;
+  IQParamConfig->AWBAlgo.convergenceSpeed = ISP_AWB_CONVERGENCESPEED_VERY_FAST;
 
   /* Set decimation configuration */
   /* Get Sensor Info */
