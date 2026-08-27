@@ -2261,7 +2261,8 @@ int32_t ISP_SVC_Misc_GetEstimatedLux(ISP_HandleTypeDef *hIsp, uint8_t averageL)
       (IQParamConfig->luxRef.LL_LuxRef == ISP_LUXREF_UNTUNED))
   {
     /* Uncalibrated lux reference points */
-    return -1;
+    Meta.lux = 0;
+    return 0;
   }
 
 
