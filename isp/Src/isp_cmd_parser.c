@@ -1046,7 +1046,8 @@ static void ISP_CmdParser_SendDumpData(uint8_t* pFrame, uint32_t size)
 
   usbx_warn_dump_status(true);
 
-  if ((ISP_HostOsType == ISP_HOST_OS_WINDOWS) && (size > ISP_MAX_DUMP_SIZE))
+  if (((ISP_HostOsType == ISP_HOST_OS_WINDOWS) || (ISP_HostOsType == ISP_HOST_OS_MAC)) &&
+      (size > ISP_MAX_DUMP_SIZE))
   {
     /* Split the data in several parts */
     do {
